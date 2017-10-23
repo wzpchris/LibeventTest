@@ -113,7 +113,7 @@ void on_accept(int fd, short ev, void *arg)
 	/* add the new client to the tailq */
 	TAILQ_INSERT_TAIL(&client_tailq_head, pclient, entries);
 
-	printf("accepted connection from %s\n", inet_ntoa(client_addr.sin_addr));
+	printf("accepted connection from %s, fd=%d\n", inet_ntoa(client_addr.sin_addr),client_fd);
 }
 
 void buffered_on_read(struct bufferevent *bev, void *arg)
@@ -130,11 +130,14 @@ void buffered_on_read(struct bufferevent *bev, void *arg)
 			break;
 		}
 
+		data[n-1] = '\0';
+
+		sprintf(data + strlen(data), " :%d", this_client->fd); 
 		TAILQ_FOREACH(client, &client_tailq_head, entries) 
 		{
 			if(client != this_client)
 			{
-				bufferevent_write(client->buf_ev, data, n);
+				bufferevent_write(client->buf_ev, data, strlen(data));
 			}
 		}
 	}
@@ -149,5 +152,9 @@ void buffered_on_error(struct bufferevent *bev, short event, void *arg)
 		printf("some other error\n");
 	}
 
+	struct client *pclient = (struct client*)arg;
+	bufferevent_free(pclient->buf_ev);
+	free(pclient);	
+	
 	bufferevent_free(bev);
 }
